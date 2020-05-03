@@ -4,25 +4,28 @@ from stockfish import Stockfish
 import re
 import random
 import time
+import requests
 
+#TODO: Fix for wait till opponent play
 class dumb_ideas(object):
     def get_into_game(self):
-#        one_min_button = driver.find_element_by_xpath("/html/body/div/main/div[2]/div[2]/div[1]")
-#        one_min_button.click()
-#        quick_pair_button = self.driver.find_element_by_xpath("/html/body/div/main/div[2]/div[1]/span[1]")
-#        quick_pair_button.click()
-        play_comp_button = self.driver.find_element_by_xpath("/html/body/div/main/div[1]/div[1]/a[3]")
-        play_comp_button.click()
         time.sleep(2)
-        play_button = self.driver.find_element_by_xpath("/html/body/div[1]/div/div/div/form/div[5]/button[2]")
-        play_button.click()
+        quick_pair_button = self.driver.find_element_by_xpath("/html/body/div/main/div[2]/div[1]/span[1]")
+        quick_pair_button.click()
+        time.sleep(2)
+        one_min_button = self.driver.find_element_by_xpath("/html/body/div/main/div[2]/div[2]/div[1]")
+        one_min_button.click()
+#        play_comp_button = self.driver.find_element_by_xpath("/html/body/div/main/div[1]/div[1]/a[3]")
+#        play_comp_button.click()
+#        play_button = self.driver.find_element_by_xpath("/html/body/div[1]/div/div/div/form/div[5]/button[2]")
+#        play_button.click()
 #        five_min_button = self.driver.find_element_by_xpath("/html/body/div/main/div[2]/div[2]/div[5]")
 #        five_min_button.click()
     
-    def get_move_list(self):
+    def _get_move_list(self):
         self.ingame_url = self.driver.current_url
-        self.kili.get("view-source:"+str(self.ingame_url))
-        self.html_source = self.kili.page_source
+        response = requests.get(self.driver.current_url)
+        self.html_source = response.content.decode('utf-8')
         temp_move_list = re.findall("\"uci\":\"\w+\"",self.html_source)
         self.move_list = []
         for move in temp_move_list: # #TODO:use translation while making moves as well
@@ -47,7 +50,7 @@ class dumb_ideas(object):
 #        print("is last move valid? : ")
 #        print(self.stockfish.is_move_correct(self.move_list[-1]))
     
-    def cheat_fn(self):
+    def _move_decider(self):
         self.stockfish.set_position(self.move_list)
         if (self.is_white and self.num_moves % 2 ==0) or (not self.is_white  and self.num_moves % 2 !=0):
                 best_move = self.stockfish.get_best_move()
@@ -56,7 +59,7 @@ class dumb_ideas(object):
                 self.click_square(best_move[2:])
             
         
-    def am_i_white(self):
+    def _am_i_white(self):
         print("hello")
         self.html_source = self.driver.page_source
         rel_text = re.findall("\"player\":{\"color\":\"\w+\"",self.html_source)
@@ -68,11 +71,11 @@ class dumb_ideas(object):
         
     def init_stockfish(self):
         self.stockfish = Stockfish("/home/tvivek/experimental/lichess_bot/stockfish-11-linux/Linux/stockfish_20011801_x64_modern")
-        self.stockfish.set_skill_level(15)
+        self.stockfish.set_skill_level(1) # set this for player strength MAX:=20
 
     def init_selenium(self):
         self.driver = webdriver.Chrome() # pakal-maanyan
-        self.kili = webdriver.Chrome() # udaayippu
+#        self.kili = webdriver.Chrome() # udaayippu
         self.driver.get("https://lichess.org")
 
     def click_square(self,square):
@@ -81,7 +84,8 @@ class dumb_ideas(object):
         y = int(square[1]) - 1
         # determine orientation of board
         board = self.driver.find_element_by_xpath("/html/body/div/main/div[1]/div[1]/div/cg-helper/cg-container/cg-board")
-        orientation = board.get_attribute("class")
+        ori = self.driver.find_element_by_xpath("/html/body/div/main/div[1]/div[1]/div")
+        orientation = ori.get_attribute("class")
         if 'orientation-black' in orientation:
             x = 7 - x
         else:
@@ -95,3 +99,42 @@ class dumb_ideas(object):
         action.click()
         action.perform()
     
+    def bad_player(self):
+        #TODO: Check if the game is over or not
+        for i in range(10):
+            try:
+                self._am_i_white()
+            except:
+                time.sleep(1)
+                continue
+        while True:
+            try:
+                self._get_move_list()
+                my_time = self.driver.find_element_by_xpath("/html/body/div/main/div[1]/div[9]/div[2]")
+                my_time = self.driver.find_element_by_class("time")
+                time.sleep(random.uniform(0,0.8))
+                self._move_decider()
+                self.check_if_game_over()
+                if self.is_game_over:
+                    print("getting new opponent")
+                    self.get_new_opponent()
+                self._am_i_white()
+            except:
+                pass
+
+    def check_if_game_over(self):
+        my_check = self.driver.find_element_by_text("NEW OPPONENT")
+        if my_check != Null:
+            print("my check isn't empty")
+            self.is_game_over = True
+        else:
+            print("my check is empty")
+            self.is_game_over = False
+
+
+    def get_new_opponent(self):
+        new_opponent_button = self.driver.find_element_by_xpath("/html/body/div/main/div[1]/div[6]/div/a[1]")
+        new_opponet_button.click()
+        self.bad_player()
+
+

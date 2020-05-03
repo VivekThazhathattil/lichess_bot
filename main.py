@@ -5,9 +5,4 @@ if __name__ == "__main__":
     obj.init_selenium()
     obj.init_stockfish()
     obj.get_into_game()
-    time.sleep(10)
-    while True:
-        obj.get_move_list()
-        obj.cheat_fn()
-        time.sleep(1)
-
+    obj.bad_player()
